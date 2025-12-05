@@ -1,7 +1,20 @@
 name: CraftingTable
 main: brs.craftingtable.CraftingTable
-version: 1.0
+version: 1.1
 api-version: 1.21
+
 commands:
-  cm:
-    description: Çalışma masasını açar
+  craft:
+    description: Çalışma masasını açar.
+    usage: /craft
+    permission: craftingtable.use
+
+  craftingtable:
+    description: Ek ayarlar içerir.
+    usage: /craftingtable togglesound
+    permission: craftingtable.use
+
+permissions:
+  craftingtable.use:
+    description: Oyuncunun /craft komutunu kullanmasına izin verir.
+    default: true
