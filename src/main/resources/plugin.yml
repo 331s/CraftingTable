@@ -18,3 +18,4 @@ permissions:
   craftingtable.use:
     description: Oyuncunun /craft komutunu kullanmasına izin verir.
     default: true
+

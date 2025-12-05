@@ -54,7 +54,6 @@ public class CraftingTable extends JavaPlugin {
         if (sound) {
             p.playSound(p.getLocation(), Sound.ENTITY_VILLAGER_WORK_FLETCHER, 1f, 1f);
         }
-
         p.sendMessage("§aÇalışma masası açıldı!");
 
         return true;
