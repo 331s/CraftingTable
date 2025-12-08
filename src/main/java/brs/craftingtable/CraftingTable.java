@@ -1,61 +1,121 @@
 package brs.craftingtable;
 
+import org.bukkit.Bukkit;
+import org.bukkit.NamespacedKey;
+import org.bukkit.Registry;
 import org.bukkit.Sound;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
+import org.bukkit.command.TabCompleter;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
-public class CraftingTable extends JavaPlugin {
+import java.util.*;
+
+public class CraftingTable extends JavaPlugin implements TabCompleter {
 
     private FileConfiguration config;
+    private final Map<UUID, Long> cooldown = new HashMap<>();
+    private String prefix;
 
     @Override
     public void onEnable() {
+
         saveDefaultConfig();
         config = getConfig();
-        getLogger().info("CraftingTable aktif edildi!");
+
+        prefix = color(config.getString("prefix", "&a[CraftingTable] &f"));
+
+        Objects.requireNonNull(getCommand("craft")).setExecutor(this);
+        Objects.requireNonNull(getCommand("craft")).setTabCompleter(this);
+
+        getServer().getPluginManager().registerEvents(new InventoryClickListener(this), this);
+
+        Bukkit.getLogger().info("CraftingTable aktif!");
     }
 
     @Override
     public void onDisable() {
         saveConfig();
-        getLogger().info("CraftingTable devre dışı bırakıldı!");
+    }
+
+    public FileConfiguration getCfg() {
+        return config;
+    }
+
+    public String getPrefix() {
+        return prefix;
+    }
+
+    public String msg(String key) {
+        return color(config.getString("messages." + key, "§cMissing: " + key));
+    }
+
+    private String color(String s) {
+        return s.replace("&", "§");
+    }
+
+    // Ses çözümleyici (Paper 1.21+ güvenli yöntem)
+    public Sound getSoundSafe(String id) {
+        NamespacedKey key = NamespacedKey.fromString(id.toLowerCase());
+        if (key == null) return null;
+        return Registry.SOUNDS.get(key);
     }
 
     @Override
     public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
 
-        if (!(sender instanceof Player)) {
-            sender.sendMessage("Bu komut yalnızca oyuncular tarafından kullanılabilir.");
+        if (!(sender instanceof Player p)) {
+            sender.sendMessage("Bu komut oyuncular içindir.");
             return true;
         }
 
-        Player p = (Player) sender;
-
-        if (args.length > 0 && args[0].equalsIgnoreCase("togglesound")) {
-            boolean current = config.getBoolean("sound." + p.getUniqueId(), true);
-            boolean next = !current;
-            config.set("sound." + p.getUniqueId(), next);
-            saveConfig();
-            p.sendMessage(next ? "§aSes efekti açıldı." : "§cSes efekti kapatıldı.");
+        // /craft settings
+        if (args.length > 0 && args[0].equalsIgnoreCase("settings")) {
+            p.openInventory(new SettingsGUI(this).create(p));
             return true;
         }
 
-        if (!p.hasPermission("craftingtable.use")) {
-            p.sendMessage("§cBu komutu kullanma iznine sahip değilsiniz.");
+        // cooldown
+        long now = System.currentTimeMillis();
+        long last = cooldown.getOrDefault(p.getUniqueId(), 0L);
+
+        int cd = config.getInt("cooldown", 3000);
+
+        if (now - last < cd) {
+            p.sendMessage(prefix + msg("cooldown"));
             return true;
         }
 
+        cooldown.put(p.getUniqueId(), now);
+
+        // çalıştır
         p.openWorkbench(null, true);
 
-        boolean sound = config.getBoolean("sound." + p.getUniqueId(), true);
-        if (sound) {
-            p.playSound(p.getLocation(), Sound.ENTITY_VILLAGER_WORK_FLETCHER, 1f, 1f);
-        }
-        p.sendMessage("§aÇalışma masası açıldı!");
+        // ses
+        boolean enabled = config.getBoolean("sound." + p.getUniqueId(), true);
 
+        if (enabled) {
+            String id = config.getString("sound-default", "minecraft:entity.villager.work_fletcher");
+            Sound s = getSoundSafe(id);
+            if (s != null) {
+                p.playSound(p.getLocation(), s, 1f, 1f);
+            }
+        }
+
+        p.sendMessage(prefix + msg("workbench-opened"));
         return true;
+    }
+
+    @Override
+    public List<String> onTabComplete(CommandSender sender, Command cmd, String alias, String[] args) {
+
+        if (!(sender instanceof Player)) return List.of();
+
+        if (args.length == 1)
+            return List.of("settings");
+
+        return List.of();
     }
 }

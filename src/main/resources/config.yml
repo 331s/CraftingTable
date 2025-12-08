@@ -1,0 +1,10 @@
+prefix: "&a[CraftingTable] &f"
+
+cooldown: 1000
+
+sound-default: "minecraft:entity.villager.work_fletcher"
+
+messages:
+  workbench-opened: "&aÇalışma masası açıldı!"
+  cooldown: "&cBiraz beklemelisin."
+  sound-toggled: "&eSes ayarı değiştirildi."
